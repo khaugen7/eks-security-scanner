@@ -1,0 +1,10 @@
+# an array of role mappings as in aws-auth ConfigMap
+- rolearn: arn:aws:iam::123456789012:role/readonly
+  username: readonly
+  groups:
+    - view
+- rolearn: arn:aws:iam::123456789012:role/admin
+  username: admin
+  groups:
+    - system:masters
+    - edit

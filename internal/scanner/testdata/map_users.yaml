@@ -1,0 +1,10 @@
+# an array of user mappings as in aws-auth ConfigMap
+- userarn: arn:aws:iam::123456789012:user/john
+  username: john
+  groups:
+    - developers
+- userarn: arn:aws:iam::123456789012:user/jane
+  username: jane
+  groups:
+    - system:masters
+    - ops
