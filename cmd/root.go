@@ -13,9 +13,12 @@ import (
 )
 
 var allChecks bool
+var clusterName string
 
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&allChecks, "all", "a", false, "Run all checks")
+	rootCmd.PersistentFlags().StringVarP(&clusterName, "cluster", "c", "", "Name of the EKS cluster to scan (required)")
+	rootCmd.MarkPersistentFlagRequired("cluster")
 }
 
 // rootCmd represents the base command when called without any subcommands
@@ -26,7 +29,7 @@ var rootCmd = &cobra.Command{
 		if allChecks {
 			fmt.Println("Running all checks...")
 			// Run all scanners
-			scanner.RunAuditCheck()
+			scanner.RunAuditCheck(clusterName)
 			// scanner.RunPrivilegeCheck()
 			// scanner.RunNamespaceCheck()
 			// scanner.RunGraphCheck()
