@@ -13,13 +13,13 @@ import (
 type GraphEdge struct {
 	From string
 	To   string
-	Label string // optional
+	Label string
 }
 
-func RunGraphCheck(outputFormat string, client *kubernetes.Clientset) {
-	pods, _ := client.CoreV1().Pods("").List(context.TODO(), v1.ListOptions{})
-	services, _ := client.CoreV1().Services("").List(context.TODO(), v1.ListOptions{})
-	endpoints, _ := client.CoreV1().Endpoints("").List(context.TODO(), v1.ListOptions{})
+func RunGraphCheck(outputFormat string, namespace string, client kubernetes.Interface) {
+	pods, _ := client.CoreV1().Pods(namespace).List(context.TODO(), v1.ListOptions{})
+	services, _ := client.CoreV1().Services(namespace).List(context.TODO(), v1.ListOptions{})
+	endpoints, _ := client.CoreV1().Endpoints(namespace).List(context.TODO(), v1.ListOptions{})
 
 	var edges []GraphEdge
 

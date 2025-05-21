@@ -29,7 +29,7 @@ type AWSAuthUser struct {
 	Groups   []string `yaml:"groups"`
 }
 
-func RunAuditCheck(clusterName string, client *kubernetes.Clientset) {
+func RunAuditCheck(clusterName string, client kubernetes.Interface) {
 	roleARNs, err := GetIAMRolesFromEKSAccessEntries(clusterName)
 	if err != nil {
 		fmt.Printf("Failed to fetch EKS access entries: %v\n", err)
@@ -124,7 +124,7 @@ func CheckStaleRoles(roleARNs []string, thresholdDays int) {
 }
 
 
-func CheckClusterRoleBindings(client *kubernetes.Clientset) {
+func CheckClusterRoleBindings(client kubernetes.Interface) {
 	crbs, err := client.RbacV1().ClusterRoleBindings().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		fmt.Println("Failed to fetch ClusterRoleBindings:", err)

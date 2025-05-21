@@ -32,9 +32,10 @@ var graphCmd = &cobra.Command{
 	eks-scanner graph --cluster my-eks-cluster --format dot`,
 	Run: func(cmd *cobra.Command, args []string) {
 	outputFormat, _ := cmd.Flags().GetString("format")
+	namespace, _ := cmd.Flags().GetString("namespace")
 	client := kube.GetClient()
 
-	scanner.RunGraphCheck(outputFormat, client)	},
+	scanner.RunGraphCheck(outputFormat, namespace, client)	},
 }
 
 func init() {

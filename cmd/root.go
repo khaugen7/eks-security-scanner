@@ -16,11 +16,13 @@ import (
 var allChecks bool
 var clusterName string
 var outputFormat string
+var namespace string
 
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&allChecks, "all", "a", false, "Run all checks")
 	rootCmd.PersistentFlags().StringVarP(&clusterName, "cluster", "c", "", "Name of the EKS cluster to scan (required)")
 	rootCmd.MarkPersistentFlagRequired("cluster")
+	rootCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "", "Name of the namespace scan")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", "ascii", "Output format: ascii or dot")
 }
 
@@ -35,7 +37,7 @@ var rootCmd = &cobra.Command{
 			scanner.RunAuditCheck(clusterName, client)
 			// scanner.RunPrivilegeCheck()
 			// scanner.RunNamespaceCheck()
-			scanner.RunGraphCheck(outputFormat, client)
+			scanner.RunGraphCheck(outputFormat, namespace, client)
 		} else {
 			_ = cmd.Help()
 		}
