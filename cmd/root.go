@@ -9,38 +9,39 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"github.com/khaugen7/eks-security-scanner/pkg/kube"
 	"github.com/khaugen7/eks-security-scanner/internal/scanner"
 )
 
 var allChecks bool
 var clusterName string
+var outputFormat string
 
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&allChecks, "all", "a", false, "Run all checks")
 	rootCmd.PersistentFlags().StringVarP(&clusterName, "cluster", "c", "", "Name of the EKS cluster to scan (required)")
 	rootCmd.MarkPersistentFlagRequired("cluster")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "format", "f", "ascii", "Output format: ascii or dot")
 }
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "eks-security-scanner",
 	Short: "Scan your EKS cluster for common security misconfigurations",
 	Run: func(cmd *cobra.Command, args []string) {
 		if allChecks {
+			client := kube.GetClient()
 			fmt.Println("Running all checks...")
 			// Run all scanners
-			scanner.RunAuditCheck(clusterName)
+			scanner.RunAuditCheck(clusterName, client)
 			// scanner.RunPrivilegeCheck()
 			// scanner.RunNamespaceCheck()
-			// scanner.RunGraphCheck()
+			scanner.RunGraphCheck(outputFormat, client)
 		} else {
 			_ = cmd.Help()
 		}
 	},
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
