@@ -14,22 +14,30 @@ import (
 // auditCmd represents the audit command
 var auditCmd = &cobra.Command{
 	Use:   "audit",
-	Short: "Scans the aws-auth ConfigMap and IAM bindings.",
-	Long: `Scans the aws-auth ConfigMap and IAM bindings.
+	Short: "Scans EKS access entries and IAM permissions.",
+	Long: `Scans EKS access entries and IAM permissions.
 Reports:
-- All IAM roles/users mapped to cluster-admin
+- All roles/users mapped to cluster-admin
 - Unused or stale IAM roles (last used > X days)
-- Cross-account access risks
-- Pods with node-wide IAM via EC2 metadata`,
+- Dangerously permissive IAM policies`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Running audit on aws-auth...")
-		scanner.RunAuditCheck()
-	},
+	clusterName, err := cmd.Flags().GetString("cluster")
+	if err != nil {
+		fmt.Println("Failed to read --cluster flag:", err)
+		return
+	}
+	if clusterName == "" {
+		fmt.Println("Missing --cluster flag")
+		return
+	}
+
+	scanner.RunAuditCheck(clusterName)
+},
+
 }
 
 func init() {
 	rootCmd.AddCommand(auditCmd)
-
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command

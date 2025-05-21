@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-	"gopkg.in/yaml.v3"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/khaugen7/eks-security-scanner/pkg/kube"
@@ -29,88 +30,22 @@ type AWSAuthUser struct {
 	Groups   []string `yaml:"groups"`
 }
 
-
-func RunAuditCheck() {
-	client := kube.GetClient()
-	cm, err := client.CoreV1().ConfigMaps("kube-system").Get(context.TODO(), "aws-auth", metav1.GetOptions{})
+func RunAuditCheck(clusterName string) {
+	roleARNs, err := GetIAMRolesFromEKSAccessEntries(clusterName)
 	if err != nil {
-		fmt.Println("Error fetching aws-auth:", err)
+		fmt.Printf("Failed to fetch EKS access entries: %v\n", err)
 		return
 	}
-
-	mapRoles := cm.Data["mapRoles"]
-	mapUsers := cm.Data["mapUsers"]
-
-	roles := ParseMapRoles(mapRoles)
-	users := ParseMapUsers(mapUsers)
-
-	PrintIAMBindings(roles, users)
-	FindOverprivilegedIdentities(roles, users)
-	CheckClusterRoleBindings()
-
-	var roleARNs []string
-	for _, r := range roles {
-		roleARNs = append(roleARNs, r.RoleARN)
-	}
-
 	CheckIAMPoliciesForRoles(roleARNs)
-}
-
-func PrintIAMBindings(roles []AWSAuthRole, users []AWSAuthUser) {
-	fmt.Println("\nIAM Role Bindings:")
-	for _, r := range roles {
-		fmt.Printf("- %s -> %s %v\n", r.RoleARN, r.Username, r.Groups)
-	}
-	fmt.Println("\nIAM User Bindings:")
-	for _, u := range users {
-		fmt.Printf("- %s -> %s %v\n", u.UserARN, u.Username, u.Groups)
-	}
-}
-
-func FindOverprivilegedIdentities(roles []AWSAuthRole, users []AWSAuthUser) {
-	fmt.Println("\n[!] Overprivileged Identities (system:masters):")
-	for _, r := range roles {
-		for _, g := range r.Groups {
-			if g == "system:masters" {
-				fmt.Printf("ROLE: %s (username: %s)\n", r.RoleARN, r.Username)
-			}
-		}
-	}
-	for _, u := range users {
-		for _, g := range u.Groups {
-			if g == "system:masters" {
-				fmt.Printf("USER: %s (username: %s)\n", u.UserARN, u.Username)
-			}
-		}
-	}
-}
-
-func CheckClusterRoleBindings() {
-	client := kube.GetClient()
-
-	crbs, err := client.RbacV1().ClusterRoleBindings().List(context.TODO(), metav1.ListOptions{})
-	if err != nil {
-		fmt.Println("Failed to fetch ClusterRoleBindings:", err)
-		return
-	}
-
-	fmt.Println("\n[+] ClusterRoleBindings to cluster-admin or risky roles:")
-
-	for _, crb := range crbs.Items {
-		role := crb.RoleRef.Name
-		if role == "cluster-admin" || strings.Contains(role, "admin") {
-			fmt.Printf("- CRB: %s binds to role: %s\n", crb.Name, role)
-			for _, subject := range crb.Subjects {
-				fmt.Printf("  -> Kind: %s, Name: %s, Namespace: %s\n", subject.Kind, subject.Name, subject.Namespace)
-			}
-		}
-	}
+	CheckStaleRoles(roleARNs, 90)
+	CheckClusterRoleBindings()
 }
 
 func CheckIAMPoliciesForRoles(roleARNs []string) {
     cfg, err := config.LoadDefaultConfig(context.TODO())
     if err != nil {
-        log.Fatalf("unable to load AWS SDK config, %v", err)
+        fmt.Printf("unable to load AWS SDK config, %v", err)
+		return
     }
 
     client := iam.NewFromConfig(cfg)
@@ -135,26 +70,113 @@ func CheckIAMPoliciesForRoles(roleARNs []string) {
             }
 
             if isOverlyPermissive(version) {
-                fmt.Printf("[!] Overly permissive policy detected on %s: %s\n", roleName, *policy.PolicyName)
+                fmt.Printf("[!] Dangerously permissive policy detected: role=%s policy=%s\n", roleName, *policy.PolicyName)
             }
         }
     }
 }
 
-func ParseMapRoles(data string) []AWSAuthRole {
-	var roles []AWSAuthRole
-	if err := yaml.Unmarshal([]byte(data), &roles); err != nil {
-		fmt.Println("Failed to parse mapRoles:", err)
+func CheckStaleRoles(roleARNs []string, thresholdDays int) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		fmt.Printf("Failed to load AWS config: %v\n", err)
+		return
 	}
-	return roles
+	client := iam.NewFromConfig(cfg)
+
+	cutoff := time.Now().AddDate(0, 0, -thresholdDays)
+
+	fmt.Printf("\n[+] Checking for stale roles (unused in > %d days)...\n", thresholdDays)
+
+	var total, stale, unknown int
+
+	for _, arn := range roleARNs {
+		roleName := extractRoleName(arn)
+		total++
+
+		output, err := client.GetRole(context.TODO(), &iam.GetRoleInput{
+			RoleName: aws.String(roleName),
+		})
+		if err != nil {
+			fmt.Printf("  [!] Failed to get role %s: %v\n", roleName, err)
+			continue
+		}
+
+		lastUsed := output.Role.RoleLastUsed
+		if lastUsed == nil || lastUsed.LastUsedDate == nil {
+			fmt.Printf("  [?] Role %s has never been used or has no usage data.\n", roleName)
+			unknown++
+			continue
+		}
+
+		if lastUsed.LastUsedDate.Before(cutoff) {
+			fmt.Printf("  [!] Role %s is stale. Last used: %s\n", roleName, lastUsed.LastUsedDate.Format("2006-01-02"))
+			stale++
+		} else {
+			fmt.Printf("  [OK] Role %s was last used on %s\n", roleName, lastUsed.LastUsedDate.Format("2006-01-02"))
+		}
+	}
+
+	fmt.Printf("\n[✓] Stale Role Scan Summary\n")
+	fmt.Printf("    Total roles scanned: %d\n", total)
+	fmt.Printf("    Stale roles found  : %d\n", stale)
+	fmt.Printf("    Unknown/unused     : %d\n", unknown)
+	fmt.Printf("    Active roles       : %d\n", total-stale-unknown)
 }
 
-func ParseMapUsers(data string) []AWSAuthUser {
-	var users []AWSAuthUser
-	if err := yaml.Unmarshal([]byte(data), &users); err != nil {
-		fmt.Println("Failed to parse mapUsers:", err)
+
+func CheckClusterRoleBindings() {
+	client := kube.GetClient()
+
+	crbs, err := client.RbacV1().ClusterRoleBindings().List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		fmt.Println("Failed to fetch ClusterRoleBindings:", err)
+		return
 	}
-	return users
+
+	fmt.Println("\n[+] ClusterRoleBindings to cluster-admin or risky roles:")
+
+	for _, crb := range crbs.Items {
+		role := crb.RoleRef.Name
+		if role == "cluster-admin" || strings.Contains(role, "admin") {
+			fmt.Printf("- CRB: %s binds to role: %s\n", crb.Name, role)
+			for _, subject := range crb.Subjects {
+				fmt.Printf("  -> Kind: %s, Name: %s, Namespace: %s\n", subject.Kind, subject.Name, subject.Namespace)
+			}
+		}
+	}
+}
+
+func GetIAMRolesFromEKSAccessEntries(clusterName string) ([]string, error) {
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		return nil, fmt.Errorf("unable to load AWS config: %w", err)
+	}
+
+	client := eks.NewFromConfig(cfg)
+
+	var roleARNs []string
+	input := &eks.ListAccessEntriesInput{
+		ClusterName: &clusterName,
+	}
+
+	paginator := eks.NewListAccessEntriesPaginator(client, input)
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(context.TODO())
+		if err != nil {
+			return nil, fmt.Errorf("error paging access entries: %w", err)
+		}
+
+		for _, entry := range page.AccessEntries {
+			// The entry is usually the full role ARN
+			if strings.HasPrefix(entry, "arn:aws:iam::") {
+				roleARNs = append(roleARNs, entry)
+			}
+		}
+	}
+
+	return roleARNs, nil
 }
 
 func extractRoleName(roleARN string) string {
@@ -163,7 +185,6 @@ func extractRoleName(roleARN string) string {
 }
 
 func getPolicyDocument(client *iam.Client, policyArn string) (string, error) {
-	// Step 1: Get policy to find the default version
 	policy, err := client.GetPolicy(context.TODO(), &iam.GetPolicyInput{
 		PolicyArn: &policyArn,
 	})
@@ -173,7 +194,6 @@ func getPolicyDocument(client *iam.Client, policyArn string) (string, error) {
 
 	versionID := policy.Policy.DefaultVersionId
 
-	// Step 2: Get policy version
 	version, err := client.GetPolicyVersion(context.TODO(), &iam.GetPolicyVersionInput{
 		PolicyArn: &policyArn,
 		VersionId: versionID,
@@ -182,7 +202,6 @@ func getPolicyDocument(client *iam.Client, policyArn string) (string, error) {
 		return "", fmt.Errorf("GetPolicyVersion failed: %w", err)
 	}
 
-	// Step 3: Decode URL-encoded policy doc
 	doc, err := url.QueryUnescape(*version.PolicyVersion.Document)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode policy document: %w", err)
