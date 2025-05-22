@@ -27,7 +27,7 @@ func init() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "eks-security-scanner",
+	Use:   "eks-scanner",
 	Short: "Scan your EKS cluster for common security misconfigurations",
 	Run: func(cmd *cobra.Command, args []string) {
 		if allChecks {
