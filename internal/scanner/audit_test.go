@@ -5,10 +5,6 @@ import (
     "testing"
 )
 
-// ----------------------------------------------------------------
-// 1) Pure-function tests
-// ----------------------------------------------------------------
-
 func TestExtractRoleName(t *testing.T) {
     cases := []struct {
         arn  string

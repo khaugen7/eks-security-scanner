@@ -12,10 +12,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-
+	
+	"k8s.io/client-go/kubernetes"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"github.com/khaugen7/eks-security-scanner/pkg/kube"
 )
 
 type AWSAuthRole struct {
@@ -30,7 +29,7 @@ type AWSAuthUser struct {
 	Groups   []string `yaml:"groups"`
 }
 
-func RunAuditCheck(clusterName string) {
+func RunAuditCheck(clusterName string, client kubernetes.Interface) {
 	roleARNs, err := GetIAMRolesFromEKSAccessEntries(clusterName)
 	if err != nil {
 		fmt.Printf("Failed to fetch EKS access entries: %v\n", err)
@@ -38,7 +37,7 @@ func RunAuditCheck(clusterName string) {
 	}
 	CheckIAMPoliciesForRoles(roleARNs)
 	CheckStaleRoles(roleARNs, 90)
-	CheckClusterRoleBindings()
+	CheckClusterRoleBindings(client)
 }
 
 func CheckIAMPoliciesForRoles(roleARNs []string) {
@@ -125,9 +124,7 @@ func CheckStaleRoles(roleARNs []string, thresholdDays int) {
 }
 
 
-func CheckClusterRoleBindings() {
-	client := kube.GetClient()
-
+func CheckClusterRoleBindings(client kubernetes.Interface) {
 	crbs, err := client.RbacV1().ClusterRoleBindings().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		fmt.Println("Failed to fetch ClusterRoleBindings:", err)

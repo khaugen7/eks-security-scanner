@@ -8,6 +8,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
+	"github.com/khaugen7/eks-security-scanner/pkg/kube"
 	"github.com/khaugen7/eks-security-scanner/internal/scanner"
 )
 
@@ -22,6 +24,8 @@ Reports:
 - Dangerously permissive IAM policies`,
 	Run: func(cmd *cobra.Command, args []string) {
 	clusterName, err := cmd.Flags().GetString("cluster")
+	client := kube.GetClient()
+
 	if err != nil {
 		fmt.Println("Failed to read --cluster flag:", err)
 		return
@@ -30,21 +34,11 @@ Reports:
 		fmt.Println("Missing --cluster flag")
 		return
 	}
-
-	scanner.RunAuditCheck(clusterName)
+	scanner.RunAuditCheck(clusterName, client)
 },
 
 }
 
 func init() {
 	rootCmd.AddCommand(auditCmd)
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// auditCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// auditCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

@@ -1,40 +1,44 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
+Copyright © 2025 Kyle Haugen kylehaugen.dev
 
 */
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+
+	"github.com/khaugen7/eks-security-scanner/pkg/kube"
+	"github.com/khaugen7/eks-security-scanner/internal/scanner"
 )
 
-// graphCmd represents the graph command
 var graphCmd = &cobra.Command{
 	Use:   "graph",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Generate a threat graph of your EKS cluster in ASCII (default) or DOT format",
+	Long: `Generate a threat graph of your EKS cluster by analyzing relationships between Pods, Services, Endpoints, ServiceAccounts, and IAM roles.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	This command models potential attack paths by mapping:
+	- Pod → ServiceAccount → IAM Role (via IRSA)
+	- Pod → Service (based on label selectors)
+	- Service → Endpoint (pod IPs behind services)
+
+	The resulting graph helps visualize the blast radius of a compromised Pod or identity.
+
+	You can output the graph in either:
+	- ASCII (default) for quick CLI inspection
+	- DOT (Graphviz format) for advanced visualization or reporting
+
+	Example usage:
+	eks-scanner graph --cluster my-eks-cluster
+	eks-scanner graph --cluster my-eks-cluster --format dot`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("graph called")
+	outputFormat, _ := cmd.Flags().GetString("format")
+	namespace, _ := cmd.Flags().GetString("namespace")
+	client := kube.GetClient()
+
+	scanner.RunGraphCheck(outputFormat, namespace, client)	
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(graphCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// graphCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// graphCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
