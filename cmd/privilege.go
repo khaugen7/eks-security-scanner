@@ -6,9 +6,10 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/khaugen7/eks-security-scanner/internal/scanner"
-	"github.com/khaugen7/eks-security-scanner/pkg/kube"
 	"github.com/spf13/cobra"
+
+	"github.com/khaugen7/eks-security-scanner/internal/scanner"
+	"github.com/khaugen7/eks-security-scanner/internal/kube"
 )
 
 // privilegeCmd represents the privilege command

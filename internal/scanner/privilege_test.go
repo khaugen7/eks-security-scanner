@@ -1,31 +1,16 @@
 package scanner
 
 import (
-    "bytes"
-    "io"
-    "os"
-    "strings"
-    "testing"
+	"strings"
+	"testing"
 
-    corev1 "k8s.io/api/core/v1"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    "k8s.io/client-go/kubernetes"
-    "k8s.io/client-go/kubernetes/fake"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
+
+    "github.com/khaugen7/eks-security-scanner/internal/testhelpers"
 )
-
-func captureOutput(f func()) string {
-    old := os.Stdout
-    r, w, _ := os.Pipe()
-    os.Stdout = w
-
-    f()
-
-    w.Close()
-    os.Stdout = old
-    var buf bytes.Buffer
-    io.Copy(&buf, r)
-    return buf.String()
-}
 
 func TestRunPrivilegeCheck_AllFindings(t *testing.T) {
     // Build a fake clientset with one Pod that triggers every check
@@ -64,7 +49,7 @@ func TestRunPrivilegeCheck_AllFindings(t *testing.T) {
 
     var client kubernetes.Interface = fake.NewSimpleClientset(pod)
 
-    out := captureOutput(func() {
+    out := testhelpers.CaptureOutput(func() {
         RunPrivilegeCheck("ns1", client)
     })
 
