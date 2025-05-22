@@ -1,6 +1,5 @@
 /*
 Copyright © 2025 Kyle Haugen kylehaugen.dev
-
 */
 package cmd
 
@@ -8,9 +7,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
 	"github.com/khaugen7/eks-security-scanner/pkg/kube"
 	"github.com/khaugen7/eks-security-scanner/internal/scanner"
+	"github.com/spf13/cobra"
 )
 
 var allChecks bool
@@ -35,7 +34,7 @@ var rootCmd = &cobra.Command{
 			fmt.Println("Running all checks...")
 			// Run all scanners
 			scanner.RunAuditCheck(clusterName, client)
-			// scanner.RunPrivilegeCheck()
+			scanner.RunPrivilegeCheck(namespace, client)
 			// scanner.RunNamespaceCheck()
 			scanner.RunGraphCheck(outputFormat, namespace, client)
 		} else {
