@@ -37,7 +37,7 @@ var rootCmd = &cobra.Command{
 			// Run all scanners
 			scanner.RunAuditCheck(clusterName, client)
 			scanner.RunPrivilegeCheck(namespace, client)
-			// scanner.RunNamespaceCheck()
+			scanner.RunNamespaceCheck(namespace, client)
 			scanner.RunGraphCheck(outputFormat, namespace, client)
 		} else {
 			_ = cmd.Help()

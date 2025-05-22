@@ -12,9 +12,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
 	"github.com/aws/aws-sdk-go-v2/service/iam"
-	
-	"k8s.io/client-go/kubernetes"
+	"github.com/khaugen7/eks-security-scanner/internal/utils"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 )
 
 type AWSAuthRole struct {
@@ -30,6 +31,8 @@ type AWSAuthUser struct {
 }
 
 func RunAuditCheck(clusterName string, client kubernetes.Interface) {
+	utils.PrintScannerHeader("IAM Audit")
+
 	roleARNs, err := GetIAMRolesFromEKSAccessEntries(clusterName)
 	if err != nil {
 		fmt.Printf("Failed to fetch EKS access entries: %v\n", err)
