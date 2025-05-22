@@ -12,6 +12,8 @@ import (
 
 	"github.com/khaugen7/eks-security-scanner/internal/kube"
 	"github.com/khaugen7/eks-security-scanner/internal/scanner"
+	"github.com/khaugen7/eks-security-scanner/pkg/kube"
+	"github.com/spf13/cobra"
 )
 
 var allChecks bool
@@ -37,7 +39,7 @@ var rootCmd = &cobra.Command{
 			// Run all scanners
 			scanner.RunAuditCheck(clusterName, client)
 			scanner.RunPrivilegeCheck(namespace, client)
-			// scanner.RunNamespaceCheck()
+			scanner.RunNamespaceCheck(namespace, client)
 			scanner.RunGraphCheck(outputFormat, namespace, client)
 		} else {
 			_ = cmd.Help()

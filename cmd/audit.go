@@ -13,7 +13,6 @@ import (
 	"github.com/khaugen7/eks-security-scanner/internal/scanner"
 )
 
-// auditCmd represents the audit command
 var auditCmd = &cobra.Command{
 	Use:   "audit",
 	Short: "Scans EKS access entries and IAM permissions.",

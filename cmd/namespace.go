@@ -1,40 +1,38 @@
 /*
-Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
+Copyright © 2025 Kyle Haugen kylehaugen.dev
 */
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+
+	"github.com/khaugen7/eks-security-scanner/pkg/kube"
+	"github.com/khaugen7/eks-security-scanner/internal/scanner"
 )
 
-// namespaceCmd represents the namespace command
 var namespaceCmd = &cobra.Command{
 	Use:   "namespace",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Scan Kubernetes namespace(s) for security misconfigurations and over-permissive defaults",
+	Long: `Scan Kubernetes namespace(s) for security misconfigurations and over-permissive defaults.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+This check identifies common namespace-level risks including:
+  - Missing ResourceQuotas: Pods can consume unlimited CPU/memory
+  - Missing LimitRanges: Containers may run without resource limits
+  - Overuse of the default ServiceAccount: increases blast radius
+  - Dangerous RoleBindings: default SA bound to cluster-admin or other powerful roles
+
+These issues often go unnoticed in development clusters or shared environments and can lead to privilege escalation, denial of service, or full cluster compromise if left unchecked.
+
+Example usage:
+  eks-scanner namespace --cluster my-eks-cluster --namespace dev`,
+
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("namespace called")
+		namespace, _ := rootCmd.Flags().GetString("namespace")
+		client := kube.GetClient()
+		scanner.RunNamespaceCheck(namespace, client)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(namespaceCmd)
-
-	// Here you will define your flags and configuration settings.
-
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// namespaceCmd.PersistentFlags().String("foo", "", "A help for foo")
-
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// namespaceCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }
