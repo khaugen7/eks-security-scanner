@@ -1,31 +1,15 @@
 package scanner
 
 import (
-    "bytes"
-    "io"
-    "os"
-    "strings"
-    "testing"
+	"strings"
+	"testing"
 
-    corev1 "k8s.io/api/core/v1"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    "k8s.io/client-go/kubernetes"
-    "k8s.io/client-go/kubernetes/fake"
+	"github.com/khaugen7/eks-security-scanner/internal/testhelpers"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/fake"
 )
-
-func captureOutput(f func()) string {
-    old := os.Stdout
-    r, w, _ := os.Pipe()
-    os.Stdout = w
-
-    f()
-
-    w.Close()
-    os.Stdout = old
-    var buf bytes.Buffer
-    io.Copy(&buf, r)
-    return buf.String()
-}
 
 func TestSelectorMatches(t *testing.T) {
     sel := map[string]string{"app": "foo", "tier": "backend"}
@@ -59,7 +43,7 @@ func TestFormatNode(t *testing.T) {
 
 func TestPrintDOTGraph(t *testing.T) {
     edges := []GraphEdge{{From: "pod/ns/p", To: "sa/ns/sa", Label: "uses"}}
-    out := captureOutput(func() { PrintDOTGraph(edges) })
+    out := testhelpers.CaptureOutput(func() { PrintDOTGraph(edges) })
     if !strings.Contains(out, "digraph eks_threat_graph") {
         t.Error("missing DOT header")
     }
@@ -73,7 +57,7 @@ func TestPrintASCIIGraph(t *testing.T) {
         {From: "pod/ns/p", To: "svc/ns/s", Label: "matches"},
         {From: "svc/ns/s", To: "ep/ns/1.2.3.4", Label: "routes-to"},
     }
-    out := captureOutput(func() { PrintASCIIGraph(edges) })
+    out := testhelpers.CaptureOutput(func() { PrintASCIIGraph(edges) })
     if !strings.Contains(out, "Threat Graph (ASCII Format):") {
         t.Error("missing ASCII header")
     }
@@ -110,7 +94,7 @@ func TestRunGraphCheck_ASCII(t *testing.T) {
     }
 
     var client kubernetes.Interface = fake.NewSimpleClientset(sa, pod, svc, eps)
-    out := captureOutput(func() { RunGraphCheck("ascii", "ns1", client) })
+    out := testhelpers.CaptureOutput(func() { RunGraphCheck("ascii", "ns1", client) })
 
     // Pod→SA
     if !strings.Contains(out, "[POD] ns1/pod1") ||
@@ -154,7 +138,7 @@ func TestRunGraphCheck_DOT(t *testing.T) {
     }
 
     var client kubernetes.Interface = fake.NewSimpleClientset(sa, pod, svc, eps)
-    out := captureOutput(func() { RunGraphCheck("dot", "ns1", client) })
+    out := testhelpers.CaptureOutput(func() { RunGraphCheck("dot", "ns1", client) })
 
     if !strings.Contains(out, "digraph eks_threat_graph") {
         t.Error("missing dot graph header")
