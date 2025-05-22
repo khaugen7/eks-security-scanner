@@ -35,7 +35,8 @@ var graphCmd = &cobra.Command{
 	namespace, _ := cmd.Flags().GetString("namespace")
 	client := kube.GetClient()
 
-	scanner.RunGraphCheck(outputFormat, namespace, client)	},
+	scanner.RunGraphCheck(outputFormat, namespace, client)	
+	},
 }
 
 func init() {

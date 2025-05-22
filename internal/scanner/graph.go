@@ -87,7 +87,7 @@ func selectorMatches(selector, labels map[string]string) bool {
 }
 
 func PrintDOTGraph(edges []GraphEdge) {
-	fmt.Println("[i] Copy the following DOT graph to https://edotor.net to visualize:\n")
+	fmt.Print("\n[i] Copy the following DOT graph to https://edotor.net to visualize:\n")
 
 	fmt.Println("digraph eks_threat_graph {")
 	fmt.Println("  rankdir=LR;")
@@ -111,7 +111,7 @@ func PrintASCIIGraph(edges []GraphEdge) {
 	}
 	sort.Strings(sources)
 
-	fmt.Println("\nThreat Graph (ASCII Format):\n")
+	fmt.Print("\n\nThreat Graph (ASCII Format):\n")
 
 	for _, src := range sources {
 		fmt.Printf("%s\n", formatNode(src))

@@ -13,7 +13,6 @@ import (
     "k8s.io/client-go/kubernetes/fake"
 )
 
-// captureOutput captures stdout from f()
 func captureOutput(f func()) string {
     old := os.Stdout
     r, w, _ := os.Pipe()
