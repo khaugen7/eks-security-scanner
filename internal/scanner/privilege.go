@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/khaugen7/eks-security-scanner/internal/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 func RunPrivilegeCheck(namespace string, client kubernetes.Interface) {
+	utils.PrintScannerHeader("Privileges Scanner")
+
 	pods, err := client.CoreV1().Pods(namespace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		fmt.Printf("Failed to list pods: %v\n", err)

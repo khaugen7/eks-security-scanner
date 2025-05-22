@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/khaugen7/eks-security-scanner/internal/utils"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -17,6 +18,8 @@ type GraphEdge struct {
 }
 
 func RunGraphCheck(outputFormat string, namespace string, client kubernetes.Interface) {
+	utils.PrintScannerHeader("Threat Graph")
+
 	pods, _ := client.CoreV1().Pods(namespace).List(context.TODO(), v1.ListOptions{})
 	services, _ := client.CoreV1().Services(namespace).List(context.TODO(), v1.ListOptions{})
 	endpoints, _ := client.CoreV1().Endpoints(namespace).List(context.TODO(), v1.ListOptions{})
