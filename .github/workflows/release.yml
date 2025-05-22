@@ -31,9 +31,22 @@ jobs:
           mkdir -p dist
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -o dist/eks-scanner-${{ matrix.goos }}-${{ matrix.goarch }}
 
+      - name: Determine if pre-release
+        id: precheck
+        run: |
+          TAG="${GITHUB_REF##*/}"
+          echo "Tag: $TAG"
+          MAJOR=$(echo "$TAG" | sed -E 's/^v([0-9]+).*/\1/')
+          if [ "$MAJOR" -eq 0 ]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
           files: dist/eks-scanner-*
+          prerelease: ${{ steps.precheck.outputs.is_prerelease }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
