@@ -1,0 +1,27 @@
+# Binaries
+bin/
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Build artifacts
+*.out
+
+# OS / IDE files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Test and coverage outputs
+*.test
+*.cover
+coverage.*
+
+# Dependency directories (if vendoring is used)
+vendor/
+
+# Logs
+*.log
