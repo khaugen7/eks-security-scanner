@@ -8,8 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/khaugen7/eks-security-scanner/internal/scanner"
 	"github.com/khaugen7/eks-security-scanner/internal/kube"
+	"github.com/khaugen7/eks-security-scanner/internal/scanner"
 )
 
 // privilegeCmd represents the privilege command

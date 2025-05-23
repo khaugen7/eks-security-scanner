@@ -26,7 +26,7 @@ func RunNamespaceCheck(namespace string, client kubernetes.Interface) {
 		}
 	} else {
 		namespaces = []string{namespace}
-			fmt.Printf("\n[+] Scanning namespace: %s for security configuration issues...\n", namespace)
+		fmt.Printf("\n[+] Scanning namespace: %s for security configuration issues...\n", namespace)
 	}
 
 	for _, ns := range namespaces {

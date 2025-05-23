@@ -12,7 +12,7 @@ The following is a set of guidelines for contributing to eks-security-scanner. T
 
 2. Clone your fork
         
-    `git clone https://github.com/<your-username>/eks-security-scanner.git`
+    `git clone https://github.com/khaugen7/eks-security-scanner.git`
 
 3. Install dependencies
 

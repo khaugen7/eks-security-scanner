@@ -12,8 +12,8 @@ import (
 )
 
 type GraphEdge struct {
-	From string
-	To   string
+	From  string
+	To    string
 	Label string
 }
 
@@ -78,7 +78,8 @@ func RunGraphCheck(outputFormat string, namespace string, client kubernetes.Inte
 		PrintDOTGraph(edges)
 	} else {
 		PrintASCIIGraph(edges)
-	}}
+	}
+}
 
 func selectorMatches(selector, labels map[string]string) bool {
 	for k, v := range selector {

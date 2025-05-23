@@ -44,38 +44,38 @@ func RunAuditCheck(clusterName string, client kubernetes.Interface) {
 }
 
 func CheckIAMPoliciesForRoles(roleARNs []string) {
-    cfg, err := config.LoadDefaultConfig(context.TODO())
-    if err != nil {
-        fmt.Printf("unable to load AWS SDK config, %v", err)
+	cfg, err := config.LoadDefaultConfig(context.TODO())
+	if err != nil {
+		fmt.Printf("unable to load AWS SDK config, %v", err)
 		return
-    }
+	}
 
-    client := iam.NewFromConfig(cfg)
+	client := iam.NewFromConfig(cfg)
 
-    for _, roleARN := range roleARNs {
-        roleName := extractRoleName(roleARN)
+	for _, roleARN := range roleARNs {
+		roleName := extractRoleName(roleARN)
 
-        policies, err := client.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
-            RoleName: aws.String(roleName),
-        })
+		policies, err := client.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
+			RoleName: aws.String(roleName),
+		})
 
-        if err != nil {
-            fmt.Printf("Error listing policies for %s: %v\n", roleName, err)
-            continue
-        }
+		if err != nil {
+			fmt.Printf("Error listing policies for %s: %v\n", roleName, err)
+			continue
+		}
 
-        for _, policy := range policies.AttachedPolicies {
-            version, err := getPolicyDocument(client, *policy.PolicyArn)
-            if err != nil {
-                fmt.Printf("Error getting policy %s: %v\n", *policy.PolicyArn, err)
-                continue
-            }
+		for _, policy := range policies.AttachedPolicies {
+			version, err := getPolicyDocument(client, *policy.PolicyArn)
+			if err != nil {
+				fmt.Printf("Error getting policy %s: %v\n", *policy.PolicyArn, err)
+				continue
+			}
 
-            if isOverlyPermissive(version) {
-                fmt.Printf("[!] Dangerously permissive policy detected: role=%s policy=%s\n", roleName, *policy.PolicyName)
-            }
-        }
-    }
+			if isOverlyPermissive(version) {
+				fmt.Printf("[!] Dangerously permissive policy detected: role=%s policy=%s\n", roleName, *policy.PolicyName)
+			}
+		}
+	}
 }
 
 func CheckStaleRoles(roleARNs []string, thresholdDays int) {
@@ -125,7 +125,6 @@ func CheckStaleRoles(roleARNs []string, thresholdDays int) {
 	fmt.Printf("    Unknown/unused     : %d\n", unknown)
 	fmt.Printf("    Active roles       : %d\n", total-stale-unknown)
 }
-
 
 func CheckClusterRoleBindings(client kubernetes.Interface) {
 	crbs, err := client.RbacV1().ClusterRoleBindings().List(context.TODO(), metav1.ListOptions{})

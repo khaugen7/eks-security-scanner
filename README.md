@@ -1,8 +1,8 @@
 # eks-security-scanner
 
-[![License](https://img.shields.io/github/license/yourname/eks-security-scanner)](LICENSE)
-[![Go Report Card](https://goreportcard.com/badge/github.com/yourname/eks-security-scanner)](https://goreportcard.com/report/github.com/yourname/eks-security-scanner)
-[![GitHub release](https://img.shields.io/github/v/release/yourname/eks-security-scanner)](https://github.com/yourname/eks-security-scanner/releases)
+[![License](https://img.shields.io/github/license/khaugen7/eks-security-scanner)](LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/khaugen7/eks-security-scanner)](https://goreportcard.com/report/github.com/khaugen7/eks-security-scanner)
+[![GitHub release](https://img.shields.io/github/v/release/khaugen7/eks-security-scanner)](https://github.com/khaugen7/eks-security-scanner/releases)
 
 
 A CLI tool to scan AWS EKS clusters for misconfigurations, over-permissive access, and common Kubernetes security risks. Built in Go for speed and simplicity.
@@ -24,7 +24,7 @@ A CLI tool to scan AWS EKS clusters for misconfigurations, over-permissive acces
 
 ### Prebuilt Binaries
 
-Download the latest release from [GitHub Releases](https://github.com/YOUR-USERNAME/eks-security-scanner/releases) and place the binary in your `$PATH`.
+Download the latest release from [GitHub Releases](https://github.com/khaugen7/eks-security-scanner/releases) and place the binary in your `$PATH`.
 
 Or install using the provided script:
 
@@ -45,6 +45,41 @@ git clone https://github.com/khaugen7/eks-security-scanner.git
 `cd eks-security-scanner`
 
 `go build -o eks-scanner main.go`
+
+---
+
+## Authentication Requirements
+
+To use `eks-scanner`, you must have:
+
+- **Kubernetes credentials** configured via `~/.kube/config` or the `KUBECONFIG` environment variable with access to your EKS cluster.
+- **AWS credentials** configured via environment variables, a named profile, or the AWS CLI (`~/.aws/credentials`) with appropriate access to your AWS account.
+
+This tool performs **read-only scanning** of your EKS environment. It does **not make any modifications** to your Kubernetes cluster or AWS resources.
+
+Minimum required AWS IAM permissions:
+
+- `eks:ListAccessEntries`
+- `eks:DescribeAccessEntry`
+- `eks:DescribeCluster`
+- `iam:GetRole`
+- `iam:ListAttachedRolePolicies`
+- `iam:GetPolicy`
+- `iam:GetPolicyVersion`
+
+Your Kubernetes user or IAM role must have **read access** to common cluster resources, including:
+
+- Pods
+- Namespaces
+- Services
+- Endpoints
+- RoleBindings
+- ServiceAccounts
+- ConfigMaps
+- ResourceQuotas
+- LimitRanges
+
+Ensure your identity has sufficient permissions in both AWS and Kubernetes to retrieve this data.
 
 ---
 

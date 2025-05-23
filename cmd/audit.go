@@ -1,6 +1,5 @@
 /*
 Copyright © 2025 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
@@ -22,20 +21,19 @@ Reports:
 - Unused or stale IAM roles (last used > X days)
 - Dangerously permissive IAM policies`,
 	Run: func(cmd *cobra.Command, args []string) {
-	clusterName, err := cmd.Flags().GetString("cluster")
-	client := kube.GetClient()
+		clusterName, err := cmd.Flags().GetString("cluster")
+		client := kube.GetClient()
 
-	if err != nil {
-		fmt.Println("Failed to read --cluster flag:", err)
-		return
-	}
-	if clusterName == "" {
-		fmt.Println("Missing --cluster flag")
-		return
-	}
-	scanner.RunAuditCheck(clusterName, client)
-},
-
+		if err != nil {
+			fmt.Println("Failed to read --cluster flag:", err)
+			return
+		}
+		if clusterName == "" {
+			fmt.Println("Missing --cluster flag")
+			return
+		}
+		scanner.RunAuditCheck(clusterName, client)
+	},
 }
 
 func init() {

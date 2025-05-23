@@ -1,10 +1,10 @@
 package kube
 
 import (
-	"os"
-	"path/filepath"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
+	"os"
+	"path/filepath"
 )
 
 func GetClient() *kubernetes.Clientset {

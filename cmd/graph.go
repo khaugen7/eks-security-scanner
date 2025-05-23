@@ -1,6 +1,5 @@
 /*
 Copyright © 2025 Kyle Haugen kylehaugen.dev
-
 */
 package cmd
 
@@ -31,11 +30,11 @@ var graphCmd = &cobra.Command{
 	eks-scanner graph --cluster my-eks-cluster
 	eks-scanner graph --cluster my-eks-cluster --format dot`,
 	Run: func(cmd *cobra.Command, args []string) {
-	outputFormat, _ := cmd.Flags().GetString("format")
-	namespace, _ := cmd.Flags().GetString("namespace")
-	client := kube.GetClient()
+		outputFormat, _ := cmd.Flags().GetString("format")
+		namespace, _ := cmd.Flags().GetString("namespace")
+		client := kube.GetClient()
 
-	scanner.RunGraphCheck(outputFormat, namespace, client)	
+		scanner.RunGraphCheck(outputFormat, namespace, client)
 	},
 }
 
