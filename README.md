@@ -124,6 +124,11 @@ If you discover a vulnerability, please report it via the contact form at [https
 
 ---
 
+## Support
+
+If you find eks-security-scanner helpful, consider [buying me a coffee](https://www.buymeacoffee.com/kylehaugen) to support continued development and maintenance. ☕️
+
+
 ## Acknowledgements
 
 Built with:
