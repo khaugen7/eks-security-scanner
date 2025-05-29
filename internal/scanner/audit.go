@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/eks"
@@ -31,11 +33,11 @@ type AWSAuthUser struct {
 }
 
 func RunAuditCheck(clusterName string, client kubernetes.Interface) {
-	utils.PrintScannerHeader("IAM Audit")
+	fmt.Print(utils.PrintScannerHeader("IAM Audit"))
 
 	roleARNs, err := GetIAMRolesFromEKSAccessEntries(clusterName)
 	if err != nil {
-		fmt.Printf("Failed to fetch EKS access entries: %v\n", err)
+		log.Errorf("Failed to fetch EKS access entries: %v\n", err)
 		return
 	}
 	CheckIAMPoliciesForRoles(roleARNs)
@@ -46,7 +48,7 @@ func RunAuditCheck(clusterName string, client kubernetes.Interface) {
 func CheckIAMPoliciesForRoles(roleARNs []string) {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		fmt.Printf("unable to load AWS SDK config, %v", err)
+		log.Errorf("unable to load AWS SDK config, %v\n", err)
 		return
 	}
 
@@ -54,25 +56,29 @@ func CheckIAMPoliciesForRoles(roleARNs []string) {
 
 	for _, roleARN := range roleARNs {
 		roleName := extractRoleName(roleARN)
+		log.Debugf("Fetching policies for role: %s\n", roleName)
 
 		policies, err := client.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
 			RoleName: aws.String(roleName),
 		})
 
 		if err != nil {
-			fmt.Printf("Error listing policies for %s: %v\n", roleName, err)
+			log.Errorf("Error listing policies for %s: %v\n", roleName, err)
 			continue
 		}
 
 		for _, policy := range policies.AttachedPolicies {
+			log.Debugf("Retrieving policy document for policy: %s\n", *policy.PolicyName)
 			version, err := getPolicyDocument(client, *policy.PolicyArn)
 			if err != nil {
-				fmt.Printf("Error getting policy %s: %v\n", *policy.PolicyArn, err)
+				log.Errorf("Error getting policy document %s: %v\n", *policy.PolicyArn, err)
 				continue
 			}
-
+			log.Debugf("Evaluating policy: %s\n", *policy.PolicyName)
 			if isOverlyPermissive(version) {
-				fmt.Printf("[!] Dangerously permissive policy detected: role=%s policy=%s\n", roleName, *policy.PolicyName)
+				log.Warnf("[!] Dangerously permissive policy detected: role=%s policy=%s\n", roleName, *policy.PolicyName)
+			} else {
+				log.Debug("No issues detected.\n")
 			}
 		}
 	}
@@ -81,14 +87,15 @@ func CheckIAMPoliciesForRoles(roleARNs []string) {
 func CheckStaleRoles(roleARNs []string, thresholdDays int) {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {
-		fmt.Printf("Failed to load AWS config: %v\n", err)
+		log.Errorf("Failed to load AWS config: %v\n", err)
 		return
 	}
 	client := iam.NewFromConfig(cfg)
 
 	cutoff := time.Now().AddDate(0, 0, -thresholdDays)
 
-	fmt.Printf("\n[+] Checking for stale roles (unused in > %d days)...\n", thresholdDays)
+	fmt.Println()
+	log.Infof("[+] Checking for stale roles (unused in > %d days)...\n", thresholdDays)
 
 	var total, stale, unknown int
 
@@ -96,51 +103,57 @@ func CheckStaleRoles(roleARNs []string, thresholdDays int) {
 		roleName := extractRoleName(arn)
 		total++
 
+		log.Debugf("Evaluating role: %s\n", roleName)
 		output, err := client.GetRole(context.TODO(), &iam.GetRoleInput{
 			RoleName: aws.String(roleName),
 		})
 		if err != nil {
-			fmt.Printf("  [!] Failed to get role %s: %v\n", roleName, err)
+			log.Errorf("  [!] Failed to get role %s: %v\n", roleName, err)
 			continue
 		}
 
 		lastUsed := output.Role.RoleLastUsed
 		if lastUsed == nil || lastUsed.LastUsedDate == nil {
-			fmt.Printf("  [?] Role %s has never been used or has no usage data.\n", roleName)
+			log.Warnf("  [?] Role %s has never been used or has no usage data.\n", roleName)
 			unknown++
 			continue
 		}
 
 		if lastUsed.LastUsedDate.Before(cutoff) {
-			fmt.Printf("  [!] Role %s is stale. Last used: %s\n", roleName, lastUsed.LastUsedDate.Format("2006-01-02"))
+			log.Warnf("  [!] Role %s is stale. Last used: %s\n", roleName, lastUsed.LastUsedDate.Format("2006-01-02"))
 			stale++
 		} else {
-			fmt.Printf("  [OK] Role %s was last used on %s\n", roleName, lastUsed.LastUsedDate.Format("2006-01-02"))
+			log.Debugf("  [OK] Role %s was last used on %s\n", roleName, lastUsed.LastUsedDate.Format("2006-01-02"))
 		}
 	}
 
-	fmt.Printf("\n[✓] Stale Role Scan Summary\n")
-	fmt.Printf("    Total roles scanned: %d\n", total)
-	fmt.Printf("    Stale roles found  : %d\n", stale)
-	fmt.Printf("    Unknown/unused     : %d\n", unknown)
-	fmt.Printf("    Active roles       : %d\n", total-stale-unknown)
+	fmt.Println()
+	log.Infof("[✓] Stale Role Scan Summary\n")
+	log.Infof("    Total roles scanned: %d\n", total)
+	log.Infof("    Stale roles found  : %d\n", stale)
+	log.Infof("    Unknown/unused     : %d\n", unknown)
+	log.Infof("    Active roles       : %d\n", total-stale-unknown)
+	fmt.Println()
 }
 
 func CheckClusterRoleBindings(client kubernetes.Interface) {
+	log.Info("[+] Checking ClusterRoleBindings...\n")
+	fmt.Println()
 	crbs, err := client.RbacV1().ClusterRoleBindings().List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
-		fmt.Println("Failed to fetch ClusterRoleBindings:", err)
+		log.Errorf("Failed to fetch ClusterRoleBindings: %s\n", err)
 		return
 	}
 
-	fmt.Println("\n[+] ClusterRoleBindings to cluster-admin or risky roles:")
+	log.Info("ClusterRoleBindings to cluster-admin or risky roles:\n")
 
 	for _, crb := range crbs.Items {
 		role := crb.RoleRef.Name
+		log.Debugf("Checking role: %s\n", role)
 		if role == "cluster-admin" || strings.Contains(role, "admin") {
-			fmt.Printf("- CRB: %s binds to role: %s\n", crb.Name, role)
+			log.Warnf("- CRB: %s binds to role: %s\n", crb.Name, role)
 			for _, subject := range crb.Subjects {
-				fmt.Printf("  -> Kind: %s, Name: %s, Namespace: %s\n", subject.Kind, subject.Name, subject.Namespace)
+				log.Warnf("  -> Kind: %s, Name: %s, Namespace: %s\n", subject.Kind, subject.Name, subject.Namespace)
 			}
 		}
 	}
@@ -219,7 +232,7 @@ func isOverlyPermissive(policyJSON string) bool {
 	}
 
 	if err := json.Unmarshal([]byte(policyJSON), &doc); err != nil {
-		fmt.Printf("Failed to parse IAM policy JSON: %v\n", err)
+		log.Errorf("Failed to parse IAM policy JSON: %v\n", err)
 		return false
 	}
 
@@ -228,7 +241,6 @@ func isOverlyPermissive(policyJSON string) bool {
 			continue
 		}
 
-		// Normalize to string slice
 		actions := normalizeStringOrSlice(stmt.Action)
 		resources := normalizeStringOrSlice(stmt.Resource)
 

@@ -1,33 +1,16 @@
 package scanner
 
 import (
-	"bytes"
-	"io"
-	"os"
 	"strings"
 	"testing"
 
+	"github.com/khaugen7/eks-security-scanner/internal/testhelpers"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 )
-
-// captureOutput captures stdout from f()
-func captureOutput(f func()) string {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	f()
-
-	w.Close()
-	os.Stdout = old
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
-	return buf.String()
-}
 
 func TestHasResourceQuota(t *testing.T) {
 	// No ResourceQuota
@@ -203,7 +186,7 @@ func TestRunNamespaceCheck_AllFindings(t *testing.T) {
 
 	var client kubernetes.Interface = fake.NewSimpleClientset(sa, rbHigh, rbMed)
 
-	out := captureOutput(func() {
+	out := testhelpers.CaptureOutput(func() {
 		RunNamespaceCheck("ns1", client)
 	})
 
