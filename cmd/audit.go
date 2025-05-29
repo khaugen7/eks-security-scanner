@@ -4,8 +4,7 @@ Copyright © 2025 NAME HERE <EMAIL ADDRESS>
 package cmd
 
 import (
-	"fmt"
-
+	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/khaugen7/eks-security-scanner/internal/kube"
@@ -25,11 +24,11 @@ Reports:
 		client := kube.GetClient()
 
 		if err != nil {
-			fmt.Println("Failed to read --cluster flag:", err)
+			log.Errorf("Failed to read --cluster flag: %s\n", err)
 			return
 		}
 		if clusterName == "" {
-			fmt.Println("Missing --cluster flag")
+			log.Error("Missing --cluster flag\n")
 			return
 		}
 		scanner.RunAuditCheck(clusterName, client)

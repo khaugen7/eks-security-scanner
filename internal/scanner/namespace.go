@@ -4,20 +4,23 @@ import (
 	"context"
 	"fmt"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/khaugen7/eks-security-scanner/internal/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
 
 func RunNamespaceCheck(namespace string, client kubernetes.Interface) {
-	utils.PrintScannerHeader("Namespace Scanner")
+	fmt.Print(utils.PrintScannerHeader("Namespace Scanner"))
 	var namespaces []string
 	if namespace == "" {
-		fmt.Print("\n[+] Scanning all namespaces for security configuration issues...\n")
+		log.Debug("No namespace provided.\n")
+		log.Info("[+] Scanning all namespaces for security configuration issues...\n")
 
 		nsList, err := client.CoreV1().Namespaces().List(context.TODO(), metav1.ListOptions{})
 		if err != nil {
-			fmt.Printf("Failed to list namespaces: %v\n", err)
+			log.Errorf("Failed to list namespaces: %v\n", err)
 			return
 		}
 
@@ -26,33 +29,36 @@ func RunNamespaceCheck(namespace string, client kubernetes.Interface) {
 		}
 	} else {
 		namespaces = []string{namespace}
-		fmt.Printf("\n[+] Scanning namespace: %s for security configuration issues...\n", namespace)
+		log.Infof("[+] Scanning namespace: %s for security configuration issues...\n", namespace)
 	}
 
+	fmt.Println()
+
 	for _, ns := range namespaces {
+		log.Debugf("Evaluating namespace: %s\n", ns)
 		var high, med, total int
 
 		if !hasResourceQuota(ns, client) {
-			fmt.Printf("[MED]  Namespace %s has no ResourceQuota: Pods may consume unbounded cluster resources\n", ns)
+			log.Warnf("[MED]  Namespace %s has no ResourceQuota: Pods may consume unbounded cluster resources\n", ns)
 			med++
 		}
 		total++
 
 		if !hasLimitRange(ns, client) {
-			fmt.Printf("[MED]  Namespace %s has no LimitRange: Containers may run without CPU/memory limits\n", ns)
+			log.Warnf("[MED]  Namespace %s has no LimitRange: Containers may run without CPU/memory limits\n", ns)
 			med++
 		}
 		total++
 
 		if defaultSAUsed(ns, client) {
-			fmt.Printf("[MED]  Namespace %s default ServiceAccount is in use: recommend using dedicated SAs for workloads\n", ns)
+			log.Warnf("[MED]  Namespace %s default ServiceAccount is in use: recommend using dedicated SAs for workloads\n", ns)
 			med++
 		}
 		total++
 
 		roleFindings := checkDefaultSARoleBindings(ns, client)
 		for _, f := range roleFindings {
-			fmt.Println(f.Message)
+			log.Warn(f.Message)
 			if f.Severity == "HIGH" {
 				high++
 			} else {
@@ -61,12 +67,13 @@ func RunNamespaceCheck(namespace string, client kubernetes.Interface) {
 		}
 		total += len(roleFindings)
 
-		fmt.Printf("\n[✓] Namespace Risk Summary\n")
-		fmt.Printf("    Namespace Scanned       : %s\n", ns)
-		fmt.Printf("    Total Checks Run        : %d\n", total)
-		fmt.Printf("    High Severity Findings  : %d\n", high)
-		fmt.Printf("    Medium Severity Findings: %d\n", med)
-		fmt.Print("\n")
+		fmt.Println()
+		log.Infof("[✓] Namespace Risk Summary\n")
+		log.Infof("    Namespace Scanned       : %s\n", ns)
+		log.Infof("    Total Checks Run        : %d\n", total)
+		log.Infof("    High Severity Findings  : %d\n", high)
+		log.Infof("    Medium Severity Findings: %d\n", med)
+		fmt.Println()
 	}
 }
 
@@ -102,17 +109,19 @@ func checkDefaultSARoleBindings(namespace string, client kubernetes.Interface) [
 	}
 
 	for _, rb := range rbs.Items {
+		log.Debugf("Checking subjects for RoleBinding: %s\n", rb.Name)
 		for _, subject := range rb.Subjects {
+			log.Debugf("Evaluating subject: %s\n", subject.Name)
 			if subject.Kind == "ServiceAccount" && subject.Name == "default" {
 				if rb.RoleRef.Kind == "ClusterRole" && rb.RoleRef.Name == "cluster-admin" {
 					findings = append(findings, RiskFinding{
 						Severity: "HIGH",
-						Message:  fmt.Sprintf("[HIGH] Namespace %s default SA is bound to cluster-admin", namespace),
+						Message:  fmt.Sprintf("[HIGH] Namespace %s default SA is bound to cluster-admin\n", namespace),
 					})
 				} else {
 					findings = append(findings, RiskFinding{
 						Severity: "MED",
-						Message:  fmt.Sprintf("[MED]  Default SA in %s bound to role %s", namespace, rb.RoleRef.Name),
+						Message:  fmt.Sprintf("[MED]  Default SA in %s bound to role %s\n", namespace, rb.RoleRef.Name),
 					})
 				}
 			}

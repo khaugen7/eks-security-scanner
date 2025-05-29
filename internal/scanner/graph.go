@@ -6,6 +6,8 @@ import (
 	"sort"
 	"strings"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/khaugen7/eks-security-scanner/internal/utils"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -18,12 +20,15 @@ type GraphEdge struct {
 }
 
 func RunGraphCheck(outputFormat string, namespace string, client kubernetes.Interface) {
-	utils.PrintScannerHeader("Threat Graph")
+	fmt.Print(utils.PrintScannerHeader("Threat Graph"))
 
 	pods, _ := client.CoreV1().Pods(namespace).List(context.TODO(), v1.ListOptions{})
 	services, _ := client.CoreV1().Services(namespace).List(context.TODO(), v1.ListOptions{})
 	endpoints, _ := client.CoreV1().Endpoints(namespace).List(context.TODO(), v1.ListOptions{})
 
+	log.Debugf("Total number of pods listed in namespace %s: %d", namespace, len(pods.Items))
+	log.Debugf("Total number of services listed in namespace %s: %d", namespace, len(services.Items))
+	log.Debugf("Total number of endpoints listed in namespace %s: %d", namespace, len(endpoints.Items))
 	var edges []GraphEdge
 
 	// Pod → SA → IAM Role
@@ -74,6 +79,8 @@ func RunGraphCheck(outputFormat string, namespace string, client kubernetes.Inte
 		}
 	}
 
+	log.Infoln("Generating threat graph...")
+	fmt.Println()
 	if strings.ToLower(outputFormat) == "dot" {
 		PrintDOTGraph(edges)
 	} else {
@@ -91,8 +98,7 @@ func selectorMatches(selector, labels map[string]string) bool {
 }
 
 func PrintDOTGraph(edges []GraphEdge) {
-	fmt.Print("\n[i] Copy the following DOT graph to https://edotor.net to visualize:\n")
-
+	log.Info("[i] Copy the following DOT graph to https://edotor.net to visualize:\n\n")
 	fmt.Println("digraph eks_threat_graph {")
 	fmt.Println("  rankdir=LR;")
 
@@ -115,7 +121,7 @@ func PrintASCIIGraph(edges []GraphEdge) {
 	}
 	sort.Strings(sources)
 
-	fmt.Print("\n\nThreat Graph (ASCII Format):\n")
+	log.Info("[+] Threat Graph (ASCII Format):\n\n")
 
 	for _, src := range sources {
 		fmt.Printf("%s\n", formatNode(src))
